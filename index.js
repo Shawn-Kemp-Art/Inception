@@ -7,6 +7,9 @@ document.body.innerHTML = '<style>body {margin: 0px;text-align: center;}</style>
 setquery("fxhash",$fx.hash);
 var initialTime = new Date().getTime();
 
+//file name 
+var fileName = $fx.hash;
+
 var canvas = document.getElementById("myCanvas");
 
 paper.setup('myCanvas');
@@ -26,6 +29,17 @@ noise.noiseSeed(seed);
 
 definitions = [
     {
+        id: "layers",
+        name: "Layers",
+        type: "number",
+        default: 12,
+        options: {
+            min: 6,
+            max: 24,
+            step: 1,
+        },  
+    },
+    {
         id: "inceptions",
         name: "Inceptions",
         type: "number",
@@ -41,7 +55,14 @@ definitions = [
         name: "Orientation",
         type: "select",
         default: "portrait",
-        options: {options: ["portrait", "landscape", "square"]},
+        options: {options: ["portrait", "landscape"]},
+    },
+    {
+        id: "aspectratio",
+        name: "Aspect ratio",
+        type: "select",
+        default: "4:5",
+        options: {options: ["1:1", "2:5","3:5","4:5","54:86","296:420"]},
     },
     {
         id: "size",
@@ -131,6 +152,17 @@ definitions = [
         type: "boolean",
         default: true,
     },
+    {
+        id: "matwidth",
+        name: "Mat size",
+        type: "number",
+        default: 75,
+        options: {
+            min: 50,
+            max: 200,
+            step: 10,
+        },  
+    },
 
    
     ]
@@ -139,7 +171,7 @@ definitions = [
 
 $fx.params(definitions)
 var scale = $fx.getParam('size');
-var stacks = 12;
+var stacks = $fx.getParam('layers');
 var numofcolors = $fx.getParam('colors');
 var meshDensity = $fx.getParam('meshDensity');
 var jiggle = $fx.getParam('jiggle');
@@ -150,13 +182,18 @@ if ($fx.getParam('skew')===true) {isskewed = "Yes"} else{isskewed = "No"};
 var wide = 800; 
 var high = 1000; 
 
+if ($fx.getParam('aspectratio')== "1:1"){wide = 800; high = 800};
+if ($fx.getParam('aspectratio')== "2:5"){wide = 400; high = 1000};
+if ($fx.getParam('aspectratio')== "3:5"){wide = 600; high = 1000};
+if ($fx.getParam('aspectratio')== "4:5"){wide = 800; high = 1000};
+if ($fx.getParam('aspectratio')== "54:86"){wide = 540; high = 860};
+if ($fx.getParam('aspectratio')== "296:420"){wide =705; high = 1000};
+
+
 
 var ratio = 1/scale;//use 1/4 for 32x40 - 1/3 for 24x30 - 1/2 for 16x20 - 1/1 for 8x10
 var minOffset = ~~(7*ratio); //this is aproximatly .125"
-//var framewidth = ~~(R.random_int(125, 125)*ratio); 
-if (scale==1){var framewidth = 75};
-if (scale==2){var framewidth = ~~(125*ratio)};
-if (scale==3){var framewidth = ~~(175*ratio)};
+var framewidth = ~~($fx.getParam('matwidth')*ratio*scale); 
 var framradius = 0;
 
 
@@ -304,7 +341,7 @@ for (z = 0; z < stacks; z++) {
     $fx.features(features);
     //$fx.preview();
  
-    floatingframe();
+    //floatingframe();
      //upspirestudio(features); //#render and send features to upspire.studio
 
 
@@ -465,6 +502,7 @@ function floatingframe(){
         var framegroup = new Group(woodframe);
         woodframe.style = {fillColor: frameColor, strokeColor: frameColor, strokeWidth: 1*ratio,shadowColor: new Color(0,0,0,[0.5]),shadowBlur: 20,shadowOffset: new Point(10*2.2, 10*2.2)};
     } else {woodframe.removeChildren()} 
+    fileName = "Framed-"+$fx.hash;
 }
 
 function rangeInt(range,x,y,z){
@@ -574,18 +612,18 @@ function hanger (z){
 
 
 //--------- Interaction functions -----------------------
-var interactiontext = "Interactions\nB = Blueprint mode\nV = Export SVG\nP = Export PNG\nC = Export colors as TXT\nE = Show layers\n"
+var interactiontext = "Interactions\nB = Blueprint mode\nV = Export SVG\nP = Export PNG\nC = Export colors as TXT\nE = Show layers\nF = Add floating frame\nL = Format for plotting"
 
 view.onDoubleClick = function(event) {
-    console.log("png")
-    canvas.toBlob(function(blob) {saveAs(blob, tokenData.hash+'.png');});
+    alert(interactiontext);
+    console.log(project.exportJSON());
+    //canvas.toBlob(function(blob) {saveAs(blob, tokenData.hash+'.png');});
 };
 
 document.addEventListener('keypress', (event) => {
 
        //Save as SVG 
        if(event.key == "v") {
-            fileName = tokenData.hash;
             var url = "data:image/svg+xml;utf8," + encodeURIComponent(paper.project.exportSVG({asString:true}));
             var key = [];for (l=stacks;l>0;l--){key[stacks-l] = colors[l-1].Name;}; 
             var svg1 = "<!--"+key+"-->" + paper.project.exportSVG({asString:true})
@@ -596,18 +634,35 @@ document.addEventListener('keypress', (event) => {
             link.click();
             }
 
+
         if(event.key == "f") {
             floatingframe();
+            
         }
         
         if(event.key == "F") {
-            floatingframe();
             frameColor = prompt("Frame color(hex)", frameColor);
             floatingframe();
             }    
 
+
+       //Format for Lightburn
+       if(event.key == "b") {
+        fileName = "blueprint-"+$fx.hash;
+            for (z=0;z<stacks;z++){
+                sheet[z].style = {fillColor: null,strokeWidth: .1,strokeColor: lightburn[stacks-z-1].Hex,shadowColor: null,shadowBlur: null,shadowOffset: null}
+                sheet[z].selected = true;}
+            }
+
        //Format for plotting
        if(event.key == "l") {
+            fileName = "Plotting-"+$fx.hash;
+
+            for (z=0;z<stacks;z++){
+            sheet[z].style = {fillColor: null,strokeWidth: .1,strokeColor: plottingColors[stacks-z-1].Hex,shadowColor: null,shadowBlur: null,shadowOffset: null}
+            sheet[z].selected = true;
+            }
+        
             for (z=0;z<stacks;z++){
                 if (z<stacks-1){
                     for (zs=z+1;zs<stacks;zs++){
@@ -619,36 +674,9 @@ document.addEventListener('keypress', (event) => {
             }
         }
 
-       //Format for Lightburn
-       if(event.key == "b") {
-        floatingframe();
-            for (z=0;z<stacks;z++){
-                sheet[z].style = {fillColor: null,strokeWidth: .1,strokeColor: lightburn[stacks-z-1].Hex,shadowColor: null,shadowBlur: null,shadowOffset: null}
-                sheet[z].selected = true;}
-            }
-
-            //new hash
-           if(event.key == " ") {
-                setquery("fxhash",null);
-                location.reload();
-                }
-
-            //toggle half vs full width
-            if(event.key == "0") {
-            if(w){setquery("w",null);}
-            if(wide==800) {setquery("w","4");}
-            location.reload();
-            }
-
-        //scale
-       if(event.key == "1" || event.key =="2" ||event.key =="3" || event.key =="4") {
-            setquery("scale",event.key);
-            location.reload();
-            }
-
-        //oriantation
-       if(event.key == "w" || event.key =="t" ||event.key =="s" ) {
-            setquery("orientation",event.key);
+        //new hash
+        if(event.key == " ") {
+            setquery("fxhash",null);
             location.reload();
             }
 
@@ -656,38 +684,26 @@ document.addEventListener('keypress', (event) => {
        if(event.key == "h" || event.key == "/") {
             alert(interactiontext);
             }
-
-  
-
-            //layers
-       if(event.key == "z") {
-            var l = prompt("How many layers", stacks);
-            setquery("layers",l);
-            location.reload();
-            }
-        
-        
+             
         //Save as PNG
         if(event.key == "p") {
-            canvas.toBlob(function(blob) {saveAs(blob, tokenData.hash+'.png');});
+            canvas.toBlob(function(blob) {saveAs(blob, fileName+'.png');});
             }
 
         //Export colors as txt
         if(event.key == "c") {
-            var key = [];
-            for (l=stacks;l>0;l--){
-                key[stacks-l] =  colors[l-1].Name;
-            }; 
-            console.log(key.reverse())
-            var content = JSON.stringify(key.reverse())
-            var filename = tokenData.hash + ".txt";
+            content = JSON.stringify(features,null,2);
+            console.log(content);
+            var filename = "Colors-"+$fx.hash + ".txt";
             var blob = new Blob([content], {type: "text/plain;charset=utf-8"});
             saveAs(blob, filename);
             }
 
 
+
        //Explode the layers     
-       if(event.key == "e") {     
+       if(event.key == "e") {   
+            //floatingframe();  
             h=0;t=0;maxwidth=3000;
                for (z=0; z<sheet.length; z++) { 
                sheet[z].scale(1000/2300)   
